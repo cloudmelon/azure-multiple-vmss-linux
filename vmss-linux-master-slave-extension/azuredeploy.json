@@ -1,0 +1,317 @@
+﻿{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmSku": {
+      "defaultValue": "Standard_D1",
+      "type": "String",
+      "metadata": {
+        "description": "Size of VMs in the VM Scale Set."
+      }
+    },
+    "vmssName": {
+      "type": "String",
+      "defaultValue": "testvmsses",
+      "metadata": {
+        "description": "String used as a base for naming resources. Must be 3-10 characters in length and globally unique across Azure Stack. A hash is prepended to this string for some resources, and resource-specific information is appended."
+      }
+    },
+    "instanceCount": {
+      "defaultValue": 5,
+      "maxValue": 20,
+      "type": "Int",
+      "metadata": {
+        "description": "Number of VM instances (20 or less)."
+      }
+    },
+    "masterNodeCount": {
+      "type": "int",
+      "maxValue": 50,
+      "metadata": {
+        "description": "Number of master node in VMSS; if singlePlacementGroup is true (the default), then this value must be 100 or less; if singlePlacementGroup is false, then ths value must be 50 or less"
+      }
+    },
+    "dataNodeCount": {
+      "type": "int",
+      "maxValue": 100,
+      "metadata": {
+        "description": "Number of data nodes in VMSS; if singlePlacementGroup is true (the default), then this value must be 100 or less; if singlePlacementGroup is false, then ths value must be 100 or less"
+      }
+    },
+    "adminUsername": {
+      "type": "String",
+      "defaultValue": "testcloudadmin",
+      "metadata": {
+        "description": "Admin username on all VMs."
+      }
+    },
+    "adminPassword": {
+      "type": "SecureString",
+      "defaultValue": "testcloudadmin@123",
+      "metadata": {
+        "description": "Admin password on all VMs."
+      }
+    },
+    "osImagePublisher": {
+      "type": "string",
+      "defaultValue": "OpenLogic",
+      "metadata": {
+        "description": "Maps to the publisher in the Azure Stack Platform Image Repository manifest file."
+      }
+    },
+    "osImageOffer": {
+      "type": "string",
+      "defaultValue": "CentOS",
+      "metadata": {
+        "description": "Maps to the Offer in the Azure Stack Platform Image Repository manifest file."
+      }
+    },
+    "osImageSku": {
+      "type": "string",
+      "defaultValue": "7.4",
+      "metadata": {
+        "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version. Default value: 14.04.3-LTS"
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "The base URI where artifacts required by this template are located. When the template is deployed using the accompanying scripts, a private location in the subscription will be used and this value will be automatically generated."
+      },
+      "defaultValue": "https://clientc4test.blob.core.windows.net/test/testscript.sh"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated."
+      },
+      "defaultValue": ""
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "vnetName": "[toLower(concat('vnet', parameters('vmssName')))]",
+    "subnetName": "[toLower(concat('subnet', parameters('vmssName')))]",
+    "storageAccountName": "[toLower(concat('SA', parameters('vmssName')))]",
+    "storageAccountContainerName": "[toLower(concat('SC',parameters('vmssName')))]",
+    "storageAccountType": "Standard_LRS",
+    "OSDiskName": "osdisk",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+    "subnetRef": "[concat(variables('vnetID'),'/subnets/', variables('subnetName'))]",
+    "publicIPAddressName": "[toLower(concat('pip', parameters('vmssName')))]",
+    "vmssDomainName": "[toLower(concat('pubdns', parameters('vmssName')))]",
+    "loadBalancerName": "[concat('LB', parameters('vmssName'))]",
+    "loadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
+    "loadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
+    "loadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
+    "loadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('vnetName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('vmssDomainName')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/loadBalancers",
+      "name": "[variables('loadBalancerName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "[variables('loadBalancerFrontEndName')]",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[variables('loadBalancerBackendName')]"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "roundRobinLBRule",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/backendAddressPools/', variables('loadBalancerBackendName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "enableFloatingIP": false,
+              "idleTimeoutInMinutes": 5,
+              "probe": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/probes/', variables('loadBalancerProbeName'))]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "[variables('loadBalancerProbeName')]",
+            "properties": {
+              "protocol": "tcp",
+              "port": 80,
+              "intervalInSeconds": "5",
+              "numberOfProbes": "2"
+            }
+          }
+        ],
+        "inboundNatPools": [
+          {
+            "name": "[variables('loadBalancerNatPoolName')]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPortRangeStart": "50000",
+              "frontendPortRangeEnd": "50019",
+              "backendPort": "3389"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "sku": {
+        "name": "[parameters('vmSku')]",
+        "tier": "Standard",
+        "capacity": "[parameters('instanceCount')]"
+      },
+      "name": "[parameters('vmssName')]",
+      "apiVersion": "2016-03-30",
+      "location": "[variables('location')]",
+      "properties": {
+        "upgradePolicy": {
+          "mode": "Manual"
+        },
+        "virtualMachineProfile": {
+          "storageProfile": {
+            "osDisk": {
+              "vhdContainers": [
+                "[concat(reference(concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).primaryEndpoints.blob, variables('storageAccountContainerName'))]"
+              ],
+              "name": "[variables('OSDiskName')]",
+              "caching": "ReadOnly",
+              "createOption": "FromImage"
+            },
+            "imageReference": {
+              "publisher": "[parameters('osImagePublisher')]",
+              "offer": "[parameters('osImageOffer')]",
+              "sku": "[parameters('osImageSku')]",
+              "version": "latest"
+            }
+          },
+          "osProfile": {
+            "computerNamePrefix": "[parameters('vmssName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "networkProfile": {
+            "networkInterfaceConfigurations": [
+              {
+                "name": "nic",
+                "properties": {
+                  "primary": "true",
+                  "ipConfigurations": [
+                    {
+                      "name": "ipconfig",
+                      "properties": {
+                        "subnet": {
+                          "id": "[variables('subnetRef')]"
+                        },
+                        "loadBalancerBackendAddressPools": [
+                          {
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/backendAddressPools/', variables('loadBalancerBackEndName'))]"
+                          }
+                        ],
+                        "loadBalancerInboundNatPools": [
+                          {
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/inboundNatPools/', variables('loadBalancerNatPoolName'))]"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "extensionProfile": {
+            "extensions": [
+              {
+                "type": "Microsoft.Compute/virtualMachines/extensions",
+                "name": "[concat(parameters('vmssName'),'-LinuxCustomScriptExtension')]",
+                "properties": {
+                  "publisher": "Microsoft.OSTCExtensions",
+                  "type": "CustomScriptForLinux",
+                  "typeHandlerVersion": "1.3",
+                  "autoUpgradeMinorVersion": true,
+                  "settings": {
+                    "fileUris": [ "https://clientc4test.blob.core.windows.net/test/testscript.sh" ],
+                    "commandToExecute": "chmod +x testscript.sh ./testscript.sh "
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
+        "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]"
+      ]
+    }
+  ]
+}
