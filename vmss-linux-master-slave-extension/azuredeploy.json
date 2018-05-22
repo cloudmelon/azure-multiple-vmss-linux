@@ -40,14 +40,14 @@
     },
     "adminUsername": {
       "type": "String",
-      "defaultValue": "testcloudadmin",
+      "defaultValue": "cloudmelon",
       "metadata": {
         "description": "Admin username on all VMs."
       }
     },
     "adminPassword": {
       "type": "SecureString",
-      "defaultValue": "testcloudadmin@123",
+      "defaultValue": "cloudmelon@2018",
       "metadata": {
         "description": "Admin password on all VMs."
       }
