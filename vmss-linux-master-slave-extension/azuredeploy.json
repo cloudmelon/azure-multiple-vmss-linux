@@ -11,7 +11,7 @@
     },
     "vmssName": {
       "type": "String",
-      "defaultValue": "testvmsses",
+      "defaultValue": "cloudmelonvmss",
       "metadata": {
         "description": "String used as a base for naming resources. Must be 3-10 characters in length and globally unique across Azure Stack. A hash is prepended to this string for some resources, and resource-specific information is appended."
       }
@@ -212,7 +212,7 @@
               "protocol": "tcp",
               "frontendPortRangeStart": "50000",
               "frontendPortRangeEnd": "50019",
-              "backendPort": "3389"
+              "backendPort": "22"
             }
           }
         ]
