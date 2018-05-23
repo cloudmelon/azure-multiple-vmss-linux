@@ -2,26 +2,11 @@
   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "vmSku": {
-      "defaultValue": "Standard_D1",
-      "type": "String",
-      "metadata": {
-        "description": "Size of VMs in the VM Scale Set."
-      }
-    },
     "vmssName": {
       "type": "String",
       "defaultValue": "cloudmelonvmss",
       "metadata": {
         "description": "String used as a base for naming resources. Must be 3-10 characters in length and globally unique across Azure Stack. A hash is prepended to this string for some resources, and resource-specific information is appended."
-      }
-    },
-    "instanceCount": {
-      "defaultValue": 5,
-      "maxValue": 20,
-      "type": "Int",
-      "metadata": {
-        "description": "Number of VM instances (20 or less)."
       }
     },
     "masterNodeCount": {
@@ -31,13 +16,27 @@
         "description": "Number of master node in VMSS; if singlePlacementGroup is true (the default), then this value must be 100 or less; if singlePlacementGroup is false, then ths value must be 50 or less"
       }
     },
+    "masterNodeSku": {
+      "defaultValue": "Standard_A1",
+      "type": "String",
+      "metadata": {
+        "description": "Size of VMs in the VM Scale Set for master node."
+      }
+    },
+    "dataNodeSku": {
+      "defaultValue": "Standard_D4S_v3",
+      "type": "String",
+      "metadata": {
+        "description": "Size of VMs in the VM Scale Set for data node."
+      }
+    },
     "dataNodeCount": {
       "type": "int",
       "maxValue": 100,
       "metadata": {
         "description": "Number of data nodes in VMSS; if singlePlacementGroup is true (the default), then this value must be 100 or less; if singlePlacementGroup is false, then ths value must be 100 or less"
       }
-    },
+    },      
     "adminUsername": {
       "type": "String",
       "defaultValue": "cloudmelon",
@@ -73,6 +72,24 @@
         "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version. Default value: 14.04.3-LTS"
       }
     },
+    "existingVnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing VNET"
+      }
+    },
+    "masterNodeSubnetName":{
+      "type": "string",
+      "metadata": {
+        "description": "master Node Subnet Name"
+      }
+    },
+    "dataNodeSubnetName":{
+      "type": "string",
+      "metadata": {
+        "description": "master Node Subnet Name"
+      }
+    },
     "_artifactsLocation": {
       "type": "string",
       "metadata": {
@@ -90,21 +107,23 @@
   },
   "variables": {
     "location": "[resourceGroup().location]",
-    "vnetName": "[toLower(concat('vnet', parameters('vmssName')))]",
-    "subnetName": "[toLower(concat('subnet', parameters('vmssName')))]",
     "storageAccountName": "[toLower(concat('SA', parameters('vmssName')))]",
     "storageAccountContainerName": "[toLower(concat('SC',parameters('vmssName')))]",
     "storageAccountType": "Standard_LRS",
     "OSDiskName": "osdisk",
-    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
-    "subnetRef": "[concat(variables('vnetID'),'/subnets/', variables('subnetName'))]",
-    "publicIPAddressName": "[toLower(concat('pip', parameters('vmssName')))]",
+    "masterPublicIPAddressName": "[toLower(concat('pip-master', parameters('vmssName')))]",
+    "dataPublicIPAddressName": "[toLower(concat('pip-data', parameters('vmssName')))]",
     "vmssDomainName": "[toLower(concat('pubdns', parameters('vmssName')))]",
-    "loadBalancerName": "[concat('LB', parameters('vmssName'))]",
-    "loadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
-    "loadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
-    "loadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
-    "loadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]"
+    "masterNodeLoadBalancerName": "[concat('LB-MasterN', parameters('vmssName'))]",
+    "dataNodeLoadBalancerName": "[concat('LB-DataN', parameters('vmssName'))]",
+    "masterNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
+    "dataNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
+    "masterNodeLoadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
+    "dataNodeLoadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
+    "masterNodeLoadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
+    "dataNodeLoadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
+    "masterNodeLoadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]",
+    "dataNodeLoadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]"
   },
   "resources": [
     {
@@ -117,10 +136,10 @@
       }
     },
     {
+      "apiVersion": "2017-04-01",
       "type": "Microsoft.Network/virtualNetworks",
-      "name": "[variables('vnetName')]",
-      "apiVersion": "2015-06-15",
-      "location": "[variables('location')]",
+      "name": "[parameters('existingVnetName')]",
+      "location": "[resourceGroup().location]",
       "properties": {
         "addressSpace": {
           "addressPrefixes": [
@@ -129,9 +148,15 @@
         },
         "subnets": [
           {
-            "name": "[variables('subnetName')]",
+            "name": "[parameters('masterNodeSubnetName')]",
             "properties": {
               "addressPrefix": "10.0.0.0/24"
+            }
+          },
+          {
+            "name": "[parameters('dataNodeSubnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.1.0/24"
             }
           }
         ]
@@ -139,35 +164,47 @@
     },
     {
       "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[variables('publicIPAddressName')]",
+      "name": "[variables('masterPublicIPAddressName')]",
       "apiVersion": "2015-06-15",
       "location": "[variables('location')]",
       "properties": {
         "publicIPAllocationMethod": "Dynamic",
         "dnsSettings": {
-          "domainNameLabel": "[variables('vmssDomainName')]"
+          "domainNameLabel": "[concat(variables('vmssDomainName'),'-master-node')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('dataPublicIPAddressName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[concat(variables('vmssDomainName'),'-data-node')]"
         }
       }
     },
     {
       "type": "Microsoft.Network/loadBalancers",
-      "name": "[variables('loadBalancerName')]",
+      "name": "[variables('masterNodeLoadBalancerName')]",
       "apiVersion": "2015-06-15",
       "location": "[variables('location')]",
       "properties": {
         "frontendIPConfigurations": [
           {
-            "name": "[variables('loadBalancerFrontEndName')]",
+            "name": "[variables('masterNodeLoadBalancerFrontEndName')]",
             "properties": {
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('masterPublicIPAddressName'))]"
               }
             }
           }
         ],
         "backendAddressPools": [
           {
-            "name": "[variables('loadBalancerBackendName')]"
+            "name": "[variables('masterNodeLoadBalancerBackendName')]"
           }
         ],
         "loadBalancingRules": [
@@ -175,10 +212,10 @@
             "name": "roundRobinLBRule",
             "properties": {
               "frontendIPConfiguration": {
-                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('masterNodeLoadBalancerFrontEndName'))]"
               },
               "backendAddressPool": {
-                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/backendAddressPools/', variables('loadBalancerBackendName'))]"
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName')), '/backendAddressPools/', variables('masterNodeLoadBalancerBackendName'))]"
               },
               "protocol": "tcp",
               "frontendPort": 80,
@@ -186,14 +223,14 @@
               "enableFloatingIP": false,
               "idleTimeoutInMinutes": 5,
               "probe": {
-                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/probes/', variables('loadBalancerProbeName'))]"
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName')), '/probes/', variables('masterNodeLoadBalancerProbeName'))]"
               }
             }
           }
         ],
         "probes": [
           {
-            "name": "[variables('loadBalancerProbeName')]",
+            "name": "[variables('masterNodeLoadBalancerProbeName')]",
             "properties": {
               "protocol": "tcp",
               "port": 80,
@@ -204,31 +241,103 @@
         ],
         "inboundNatPools": [
           {
-            "name": "[variables('loadBalancerNatPoolName')]",
+            "name": "[variables('masterNodeLoadBalancerNatPoolName')]",
             "properties": {
               "frontendIPConfiguration": {
-                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('masterNodeLoadBalancerFrontEndName'))]"
               },
               "protocol": "tcp",
               "frontendPortRangeStart": "50000",
               "frontendPortRangeEnd": "50019",
-              "backendPort": "22"
+              "backendPort": "3389"
             }
           }
         ]
       },
       "dependsOn": [
-        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]"
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('masterPublicIPAddressName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/loadBalancers",
+      "name": "[variables('dataNodeLoadBalancerName')]",
+      "apiVersion": "2015-06-15",
+      "location": "[variables('location')]",
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "[variables('dataNodeLoadBalancerFrontEndName')]",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('dataPublicIPAddressName'))]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[variables('dataNodeLoadBalancerBackendName')]"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "roundRobinLBRule",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('dataNodeLoadBalancerFrontEndName'))]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName')), '/backendAddressPools/', variables('dataNodeLoadBalancerBackendName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "enableFloatingIP": false,
+              "idleTimeoutInMinutes": 5,
+              "probe": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName')), '/probes/', variables('dataNodeLoadBalancerProbeName'))]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "[variables('dataNodeLoadBalancerProbeName')]",
+            "properties": {
+              "protocol": "tcp",
+              "port": 80,
+              "intervalInSeconds": "5",
+              "numberOfProbes": "2"
+            }
+          }
+        ],
+        "inboundNatPools": [
+          {
+            "name": "[variables('dataNodeLoadBalancerNatPoolName')]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('dataNodeLoadBalancerFrontEndName'))]"
+              },
+              "protocol": "tcp",
+              "frontendPortRangeStart": "50000",
+              "frontendPortRangeEnd": "50019",
+              "backendPort": "3389"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('dataPublicIPAddressName'))]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachineScaleSets",
       "sku": {
-        "name": "[parameters('vmSku')]",
+        "name": "[parameters('masterNodeSku')]",
         "tier": "Standard",
-        "capacity": "[parameters('instanceCount')]"
+        "capacity": "[parameters('masterNodeCount')]"
       },
-      "name": "[parameters('vmssName')]",
+      "name": "[concat(parameters('vmssName'), '-master-node')]",
       "apiVersion": "2016-03-30",
       "location": "[variables('location')]",
       "properties": {
@@ -268,16 +377,16 @@
                       "name": "ipconfig",
                       "properties": {
                         "subnet": {
-                          "id": "[variables('subnetRef')]"
+                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('masterNodeSubnetName'))]"
                         },
                         "loadBalancerBackendAddressPools": [
                           {
-                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/backendAddressPools/', variables('loadBalancerBackEndName'))]"
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('masterNodeLoadBalancerName'), '/backendAddressPools/', variables('masterNodeLoadBalancerBackEndName'))]"
                           }
                         ],
                         "loadBalancerInboundNatPools": [
                           {
-                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/inboundNatPools/', variables('loadBalancerNatPoolName'))]"
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('masterNodeLoadBalancerName'), '/inboundNatPools/', variables('masterNodeLoadBalancerNatPoolName'))]"
                           }
                         ]
                       }
@@ -309,9 +418,104 @@
       },
       "dependsOn": [
         "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
-        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
-        "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]"
+        "[concat('Microsoft.Network/virtualNetworks/', parameters('existingVnetName'))]",
+        "[resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "sku": {
+        "name": "[parameters('dataNodeSku')]",
+        "tier": "Standard",
+        "capacity": "[parameters('dataNodeCount')]"
+      },
+      "name":"[concat(parameters('vmssName'), '-data-node')]",
+      "apiVersion": "2016-03-30",
+      "location": "[variables('location')]",
+      "properties": {
+        "upgradePolicy": {
+          "mode": "Manual"
+        },
+        "virtualMachineProfile": {
+          "storageProfile": {
+            "osDisk": {
+              "vhdContainers": [
+                "[concat(reference(concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).primaryEndpoints.blob, variables('storageAccountContainerName'))]"
+              ],
+              "name": "[variables('OSDiskName')]",
+              "caching": "ReadOnly",
+              "createOption": "FromImage"
+            },
+            "imageReference": {
+              "publisher": "[parameters('osImagePublisher')]",
+              "offer": "[parameters('osImageOffer')]",
+              "sku": "[parameters('osImageSku')]",
+              "version": "latest"
+            }
+          },
+          "osProfile": {
+            "computerNamePrefix": "[parameters('vmssName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "networkProfile": {
+            "networkInterfaceConfigurations": [
+              {
+                "name": "nic",
+                "properties": {
+                  "primary": "true",
+                  "ipConfigurations": [
+                    {
+                      "name": "ipconfig",
+                      "properties": {
+                        "subnet": {
+                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('dataNodeSubnetName'))]"
+                        },
+                        "loadBalancerBackendAddressPools": [
+                          {
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('dataNodeLoadBalancerName'), '/backendAddressPools/', variables('dataNodeLoadBalancerBackEndName'))]"
+                          }
+                        ],
+                        "loadBalancerInboundNatPools": [
+                          {
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('dataNodeLoadBalancerName'), '/inboundNatPools/', variables('dataNodeLoadBalancerNatPoolName'))]"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "extensionProfile": {
+            "extensions": [
+              {
+                "type": "Microsoft.Compute/virtualMachines/extensions",
+                "name": "[concat(parameters('vmssName'),'-LinuxCustomScriptExtension')]",
+                "properties": {
+                  "publisher": "Microsoft.OSTCExtensions",
+                  "type": "CustomScriptForLinux",
+                  "typeHandlerVersion": "1.3",
+                  "autoUpgradeMinorVersion": true,
+                  "settings": {
+                    "fileUris": [ "https://clientc4test.blob.core.windows.net/test/testscript.sh" ],
+                    "commandToExecute": "chmod +x testscript.sh ./testscript.sh "
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', parameters('existingVnetName'))]",
+        "[resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName'))]"
       ]
     }
   ]
 }
+
+
+
