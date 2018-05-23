@@ -72,24 +72,6 @@
         "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version. Default value: 14.04.3-LTS"
       }
     },
-    "existingVnetName": {
-      "type": "string",
-      "metadata": {
-        "description": "Name of the existing VNET"
-      }
-    },
-    "masterNodeSubnetName":{
-      "type": "string",
-      "metadata": {
-        "description": "master Node Subnet Name"
-      }
-    },
-    "dataNodeSubnetName":{
-      "type": "string",
-      "metadata": {
-        "description": "master Node Subnet Name"
-      }
-    },
     "_artifactsLocation": {
       "type": "string",
       "metadata": {
@@ -111,6 +93,9 @@
     "storageAccountContainerName": "[toLower(concat('SC',parameters('vmssName')))]",
     "storageAccountType": "Standard_LRS",
     "OSDiskName": "osdisk",
+    "vnetName":"[concat('vnet-', parameters('vmssName'))]",
+    "subnetMaster":"[concat('mastersubnet-', parameters('vmssName'))]",
+    "subnetData":"[concat('datasubnet-', parameters('vmssName'))]",
     "masterPublicIPAddressName": "[toLower(concat('pip-master', parameters('vmssName')))]",
     "dataPublicIPAddressName": "[toLower(concat('pip-data', parameters('vmssName')))]",
     "vmssDomainName": "[toLower(concat('pubdns', parameters('vmssName')))]",
@@ -138,7 +123,7 @@
     {
       "apiVersion": "2017-04-01",
       "type": "Microsoft.Network/virtualNetworks",
-      "name": "[parameters('existingVnetName')]",
+      "name": "[variables('vnetName')]",
       "location": "[resourceGroup().location]",
       "properties": {
         "addressSpace": {
@@ -148,13 +133,13 @@
         },
         "subnets": [
           {
-            "name": "[parameters('masterNodeSubnetName')]",
+            "name": "[variables('subnetMaster')]",
             "properties": {
               "addressPrefix": "10.0.0.0/24"
             }
           },
           {
-            "name": "[parameters('dataNodeSubnetName')]",
+            "name": "[variables('subnetData')]",
             "properties": {
               "addressPrefix": "10.0.1.0/24"
             }
@@ -377,7 +362,7 @@
                       "name": "ipconfig",
                       "properties": {
                         "subnet": {
-                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('masterNodeSubnetName'))]"
+                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetMaster'))]"
                         },
                         "loadBalancerBackendAddressPools": [
                           {
@@ -418,7 +403,7 @@
       },
       "dependsOn": [
         "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
-        "[concat('Microsoft.Network/virtualNetworks/', parameters('existingVnetName'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
         "[resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName'))]"
       ]
     },
@@ -469,7 +454,7 @@
                       "name": "ipconfig",
                       "properties": {
                         "subnet": {
-                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('existingVnetName'), parameters('dataNodeSubnetName'))]"
+                          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetData'))]"
                         },
                         "loadBalancerBackendAddressPools": [
                           {
@@ -510,7 +495,7 @@
       },
       "dependsOn": [
         "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
-        "[concat('Microsoft.Network/virtualNetworks/', parameters('existingVnetName'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
         "[resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName'))]"
       ]
     }
