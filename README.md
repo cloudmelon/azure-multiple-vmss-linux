@@ -8,6 +8,8 @@ Reference repository :
 
 ARM Template : https://github.com/cloudmelon/cloudmelonazurearm
 
-Lab repository : to be updated.
+Lab repository : https://github.com/cloudmelon/cloudmelonsamplecloudlab
 
-Application repository : to be updated.
+Application repository : https://github.com/cloudmelon/cloudmelonsampleapp
+
+Blog site : www.cloud-melon.com/
