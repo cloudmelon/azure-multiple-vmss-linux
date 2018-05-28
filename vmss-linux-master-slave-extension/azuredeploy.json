@@ -121,9 +121,9 @@
       }
     },
     {
-      "apiVersion": "2017-04-01",
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[variables('vnetName')]",
+	  "apiVersion": "2017-06-01",
       "location": "[resourceGroup().location]",
       "properties": {
         "addressSpace": {
@@ -150,7 +150,7 @@
     {
       "type": "Microsoft.Network/publicIPAddresses",
       "name": "[variables('masterPublicIPAddressName')]",
-      "apiVersion": "2015-06-15",
+      "apiVersion": "2017-06-01",
       "location": "[variables('location')]",
       "properties": {
         "publicIPAllocationMethod": "Dynamic",
@@ -162,7 +162,7 @@
     {
       "type": "Microsoft.Network/publicIPAddresses",
       "name": "[variables('dataPublicIPAddressName')]",
-      "apiVersion": "2015-06-15",
+      "apiVersion": "2017-06-01",
       "location": "[variables('location')]",
       "properties": {
         "publicIPAllocationMethod": "Dynamic",
@@ -174,7 +174,7 @@
     {
       "type": "Microsoft.Network/loadBalancers",
       "name": "[variables('masterNodeLoadBalancerName')]",
-      "apiVersion": "2015-06-15",
+      "apiVersion": "2017-06-01",
       "location": "[variables('location')]",
       "properties": {
         "frontendIPConfigurations": [
@@ -231,10 +231,10 @@
               "frontendIPConfiguration": {
                 "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('masterNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('masterNodeLoadBalancerFrontEndName'))]"
               },
-              "protocol": "tcp",
-              "frontendPortRangeStart": "50000",
-              "frontendPortRangeEnd": "50019",
-              "backendPort": "3389"
+              "protocol": "Tcp",
+              "frontendPortRangeStart": 50000,
+              "frontendPortRangeEnd": 50019,
+              "backendPort": 3389
             }
           }
         ]
@@ -246,7 +246,7 @@
     {
       "type": "Microsoft.Network/loadBalancers",
       "name": "[variables('dataNodeLoadBalancerName')]",
-      "apiVersion": "2015-06-15",
+      "apiVersion": "2017-06-01",
       "location": "[variables('location')]",
       "properties": {
         "frontendIPConfigurations": [
@@ -303,10 +303,10 @@
               "frontendIPConfiguration": {
                 "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('dataNodeLoadBalancerName')), '/frontendIPConfigurations/', variables('dataNodeLoadBalancerFrontEndName'))]"
               },
-              "protocol": "tcp",
-              "frontendPortRangeStart": "50000",
-              "frontendPortRangeEnd": "50019",
-              "backendPort": "3389"
+              "protocol": "Tcp",
+              "frontendPortRangeStart": 50000,
+              "frontendPortRangeEnd": 50019,
+              "backendPort": 3389
             }
           }
         ]
@@ -323,7 +323,7 @@
         "capacity": "[parameters('masterNodeCount')]"
       },
       "name": "[concat(parameters('vmssName'), '-master-node')]",
-      "apiVersion": "2016-03-30",
+      "apiVersion": "2017-12-01",
       "location": "[variables('location')]",
       "properties": {
         "upgradePolicy": {
@@ -415,7 +415,7 @@
         "capacity": "[parameters('dataNodeCount')]"
       },
       "name":"[concat(parameters('vmssName'), '-data-node')]",
-      "apiVersion": "2016-03-30",
+      "apiVersion": "2017-12-01",
       "location": "[variables('location')]",
       "properties": {
         "upgradePolicy": {
