@@ -2,13 +2,6 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "vmssName": {
-      "type": "String",
-      "defaultValue": "cloudmelonvmss",
-      "metadata": {
-        "description": "String used as a base for naming resources. Must be 3-10 characters in length and globally unique across Azure Stack. A hash is prepended to this string for some resources, and resource-specific information is appended."
-      }
-    },
     "masterNodeCount": {
       "type": "int",
       "maxValue": 50,
@@ -88,27 +81,28 @@
     }
   },
   "variables": {
+    "vmssName":"[concat('vmss', uniqueString(resourceGroup().id, deployment().name))]",
     "location": "[resourceGroup().location]",
-    "storageAccountName": "[toLower(concat('SA', parameters('vmssName')))]",
-    "storageAccountContainerName": "[toLower(concat('SC',parameters('vmssName')))]",
+    "storageAccountName": "[toLower(concat('SA', variables('vmssName')))]",
+    "storageAccountContainerName": "[toLower(concat('SC',variables('vmssName')))]",
     "storageAccountType": "Standard_LRS",
     "OSDiskName": "osdisk",
-    "vnetName":"[concat('vnet-', parameters('vmssName'))]",
-    "subnetMaster":"[concat('mastersubnet-', parameters('vmssName'))]",
-    "subnetData":"[concat('datasubnet-', parameters('vmssName'))]",
-    "masterPublicIPAddressName": "[toLower(concat('pip-master', parameters('vmssName')))]",
-    "dataPublicIPAddressName": "[toLower(concat('pip-data', parameters('vmssName')))]",
-    "vmssDomainName": "[toLower(concat('pubdns', parameters('vmssName')))]",
-    "masterNodeLoadBalancerName": "[concat('LB-MasterN', parameters('vmssName'))]",
-    "dataNodeLoadBalancerName": "[concat('LB-DataN', parameters('vmssName'))]",
-    "masterNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
-    "dataNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', parameters('vmssName'))]",
-    "masterNodeLoadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
-    "dataNodeLoadBalancerBackEndName": "[concat('LBBackEnd',parameters('vmssName'))]",
-    "masterNodeLoadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
-    "dataNodeLoadBalancerProbeName": "[concat('LBHttpProbe', parameters('vmssName'))]",
-    "masterNodeLoadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]",
-    "dataNodeLoadBalancerNatPoolName": "[concat('LBNatPool', parameters('vmssName'))]"
+    "vnetName":"[concat('vnet-', variables('vmssName'))]",
+    "subnetMaster":"[concat('mastersubnet-', variables('vmssName'))]",
+    "subnetData":"[concat('datasubnet-', variables('vmssName'))]",
+    "masterPublicIPAddressName": "[toLower(concat('pip-master', variables('vmssName')))]",
+    "dataPublicIPAddressName": "[toLower(concat('pip-data', variables('vmssName')))]",
+    "vmssDomainName": "[toLower(concat('pubdns', variables('vmssName')))]",
+    "masterNodeLoadBalancerName": "[concat('LB-MasterN', variables('vmssName'))]",
+    "dataNodeLoadBalancerName": "[concat('LB-DataN', variables('vmssName'))]",
+    "masterNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', variables('vmssName'))]",
+    "dataNodeLoadBalancerFrontEndName": "[concat('LBFrontEnd', variables('vmssName'))]",
+    "masterNodeLoadBalancerBackEndName": "[concat('LBBackEnd',variables('vmssName'))]",
+    "dataNodeLoadBalancerBackEndName": "[concat('LBBackEnd',variables('vmssName'))]",
+    "masterNodeLoadBalancerProbeName": "[concat('LBHttpProbe', variables('vmssName'))]",
+    "dataNodeLoadBalancerProbeName": "[concat('LBHttpProbe', variables('vmssName'))]",
+    "masterNodeLoadBalancerNatPoolName": "[concat('LBNatPool', variables('vmssName'))]",
+    "dataNodeLoadBalancerNatPoolName": "[concat('LBNatPool', variables('vmssName'))]"
   },
   "resources": [
     {
@@ -322,7 +316,7 @@
         "tier": "Standard",
         "capacity": "[parameters('masterNodeCount')]"
       },
-      "name": "[concat(parameters('vmssName'), '-master-node')]",
+      "name": "[concat(variables('vmssName'), '-master-node')]",
       "apiVersion": "2017-12-01",
       "location": "[variables('location')]",
       "properties": {
@@ -347,7 +341,7 @@
             }
           },
           "osProfile": {
-            "computerNamePrefix": "[parameters('vmssName')]",
+            "computerNamePrefix": "[variables('vmssName')]",
             "adminUsername": "[parameters('adminUsername')]",
             "adminPassword": "[parameters('adminPassword')]"
           },
@@ -385,7 +379,7 @@
             "extensions": [
               {
                 "type": "Microsoft.Compute/virtualMachines/extensions",
-                "name": "[concat(parameters('vmssName'),'-LinuxCustomScriptExtension')]",
+                "name": "[concat(variables('vmssName'),'-LinuxCustomScriptExtension')]",
                 "properties": {
                   "publisher": "Microsoft.OSTCExtensions",
                   "type": "CustomScriptForLinux",
@@ -414,7 +408,7 @@
         "tier": "Standard",
         "capacity": "[parameters('dataNodeCount')]"
       },
-      "name":"[concat(parameters('vmssName'), '-data-node')]",
+      "name":"[concat(variables('vmssName'), '-data-node')]",
       "apiVersion": "2017-12-01",
       "location": "[variables('location')]",
       "properties": {
@@ -439,7 +433,7 @@
             }
           },
           "osProfile": {
-            "computerNamePrefix": "[parameters('vmssName')]",
+            "computerNamePrefix": "[variables('vmssName')]",
             "adminUsername": "[parameters('adminUsername')]",
             "adminPassword": "[parameters('adminPassword')]"
           },
@@ -477,7 +471,7 @@
             "extensions": [
               {
                 "type": "Microsoft.Compute/virtualMachines/extensions",
-                "name": "[concat(parameters('vmssName'),'-LinuxCustomScriptExtension')]",
+                "name": "[concat(variables('vmssName'),'-LinuxCustomScriptExtension')]",
                 "properties": {
                   "publisher": "Microsoft.OSTCExtensions",
                   "type": "CustomScriptForLinux",
