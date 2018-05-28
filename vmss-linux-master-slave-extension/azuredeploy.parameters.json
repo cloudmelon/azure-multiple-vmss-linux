@@ -1,5 +1,5 @@
 {
-    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "$schema": "httpss://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {	
 	       "vmSSName": {
@@ -25,16 +25,13 @@
 			},
 			"osImagePublisher": {
 				"value": "OpenLogic"
-			  },
+			},
 			  "osImageOffer": {
 				"value": "CentOS"				
-			  },
+			},
 			  "osImageSku": {	
 				"value": "latest"
-			  },
-			  "_artifactsLocation": {				
-				"value": "https://github.com/cloudmelon/cloudmelonazurearm/tree/master/vmss-linux-master-slave-extension"
-			  }
+			}
     }
 }
 
