@@ -1,4 +1,4 @@
-# Deploy a VM Scale Set of VMs with a custom script extension in master / slave architecture ( Existing VNET)
+# Deploy a VM Scale Set of VMs with a custom script extension in master / slave architecture ( Existing VNET, non managed disks)
 
 <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https://github.com/cloudmelon/cloudmelonazurearm/blob/master/vmss-linux-master-slave-extension/azuredeploy.json" target="_blank">
 <img src="https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.png"/>

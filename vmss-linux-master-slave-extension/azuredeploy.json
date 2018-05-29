@@ -83,8 +83,8 @@
   "variables": {
     "vmssName":"[concat('vmss', uniqueString(resourceGroup().id, deployment().name))]",
     "location": "[resourceGroup().location]",
-    "storageAccountName": "[toLower(concat('SA', variables('vmssName')))]",
-    "storageAccountContainerName": "[toLower(concat('SC',variables('vmssName')))]",
+    "storageAccountName": "[toLower(concat('SA', uniqueString(resourceGroup().id)))]",
+    "storageAccountContainerName": "[toLower(concat('SC', uniqueString(resourceGroup().id)))]",
     "storageAccountType": "Standard_LRS",
     "OSDiskName": "osdisk",
     "vnetName":"[concat('vnet-', variables('vmssName'))]",
@@ -234,6 +234,7 @@
         ]
       },
       "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
         "[concat('Microsoft.Network/publicIPAddresses/', variables('masterPublicIPAddressName'))]"
       ]
     },
@@ -306,6 +307,7 @@
         ]
       },
       "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]",
         "[concat('Microsoft.Network/publicIPAddresses/', variables('dataPublicIPAddressName'))]"
       ]
     },
