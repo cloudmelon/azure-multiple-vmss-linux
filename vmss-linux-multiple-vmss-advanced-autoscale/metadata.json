@@ -1,0 +1,7 @@
+{
+  "itemDisplayName": "Based on Deploy a Linux VM Scale Set with a Custom Script Extension with multiple vmss",
+  "description": "This template allows you to deploy a VM Scale Set of Linux VMs.",
+  "summary": "This template allows you to deploy a VM Scale Set of Linux VMs.",
+  "githubUsername": "cloudmelon",
+  "dateUpdated": "2018-05-24"
+}
