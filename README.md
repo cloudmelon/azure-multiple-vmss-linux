@@ -9,7 +9,7 @@ ARM Templates authored by cloudmelon. Help that will help.
 
 
 
-
+## Book Guide
 
 This repository stores also refered the mentionned ARM template in the book:
 
@@ -20,6 +20,9 @@ More details on :
 https://www.packtpub.com/virtualization-and-cloud/implementing-microsoft-azure-infrastructure-solutions-exam-guide-70-533
 
 
+## Blog Guide
+
+Blog site : https://www.cloud-melon.com/
 
 
 # Reference repository : 
@@ -34,7 +37,6 @@ Lab repository : https://github.com/cloudmelon/cloudmelonsamplecloudlab
 
 Application repository : https://github.com/cloudmelon/cloudmelonsampleapp
 
-Blog site : https://www.cloud-melon.com/
 
 
 
