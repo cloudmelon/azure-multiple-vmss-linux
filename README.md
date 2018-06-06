@@ -5,25 +5,19 @@ ARM Templates authored by cloudmelon. Help that will help.
 
 
 
-
-
-
-
-## Book Guide
-
-This repository stores also refered the mentionned ARM template in the book:
+## Guide book
 
 Implementing Microsoft Azure Infrastructure Solutions : Exam Guide 70-533
 Author : Melony QIN
 
+
 More details on :
 https://www.packtpub.com/virtualization-and-cloud/implementing-microsoft-azure-infrastructure-solutions-exam-guide-70-533
 
-
-## Blog Guide
-
+## Guide blog site 
 Blog site : https://www.cloud-melon.com/
 
+Share your insights with @MelonyQ at https://twitter.com/MelonyQ
 
 # Reference repository : 
 
