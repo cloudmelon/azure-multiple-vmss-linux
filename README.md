@@ -31,6 +31,7 @@ Lab repository : https://github.com/cloudmelon/cloudmelonsamplecloudlab
 
 Application repository : https://github.com/cloudmelon/cloudmelonsampleapp
 
+## Licence
 
 
 
