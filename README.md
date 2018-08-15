@@ -1,7 +1,7 @@
 # Azure multiple vmss Repository by cloudmelon
-This repository stores cloudmelon's arm template ,  sharing and optimising your deployment experience in Azure
+This repository stores cloudmelon's arm template for the topic of VM Scale Sets.  
 
-ARM Templates authored by cloudmelon. Help that will help. 
+Sharing and optimising your deployment experience in Azure. ARM Templates authored by cloudmelon. Help that will help. 
 
 
 
@@ -32,7 +32,7 @@ Lab repository : https://github.com/cloudmelon/cloudmelonsamplecloudlab
 Application repository : https://github.com/cloudmelon/cloudmelonsampleapp
 
 ## Licence
-
+MIT Licence
 
 
 
